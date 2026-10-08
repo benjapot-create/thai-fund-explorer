@@ -3,15 +3,10 @@ import Link from "next/link";
 import { getFundById } from "@/services/fund/fundProfileService";
 
 type Props = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
-
-export default async function FundDetailPage({
-  params,
-}: Props) {
-  const { id } = params;
 
 export default async function FundDetailPage({ params }: Props) {
   const { id } = await params;
@@ -20,8 +15,8 @@ export default async function FundDetailPage({ params }: Props) {
 
   if (!fund) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-sm p-8 text-center">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-2xl">
             ⚠️
           </div>
@@ -82,10 +77,12 @@ export default async function FundDetailPage({ params }: Props) {
                 </p>
               </div>
 
-              {/* Status */}
               <div className="shrink-0">
                 <div className="rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
-                  <p className="text-xs text-blue-200">สถานะกองทุน</p>
+                  <p className="text-xs text-blue-200">
+                    สถานะกองทุน
+                  </p>
+
                   <p className="mt-1 text-lg font-semibold">
                     {fund.fund_status || "-"}
                   </p>
