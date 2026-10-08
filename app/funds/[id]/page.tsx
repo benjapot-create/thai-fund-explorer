@@ -1,6 +1,7 @@
 import Link from "next/link";
-
 import { getFundById } from "@/services/fund/fundProfileService";
+
+export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{
