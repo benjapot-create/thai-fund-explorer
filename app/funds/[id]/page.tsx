@@ -192,7 +192,7 @@ function InfoItem({
   value,
 }: {
   label: string;
-  value: unknown;
+  value?: string | number | null;
 }) {
   return (
     <div className="px-6 py-5">
