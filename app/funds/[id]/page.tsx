@@ -1,13 +1,17 @@
-export const instant = false;
 import Link from "next/link";
 
 import { getFundById } from "@/services/fund/fundProfileService";
 
 type Props = {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 };
+
+export default async function FundDetailPage({
+  params,
+}: Props) {
+  const { id } = params;
 
 export default async function FundDetailPage({ params }: Props) {
   const { id } = await params;
