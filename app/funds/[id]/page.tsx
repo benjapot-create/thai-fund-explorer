@@ -1,3 +1,4 @@
+export const instant = false;
 import Link from "next/link";
 
 import { getFundById } from "@/services/fund/fundProfileService";
