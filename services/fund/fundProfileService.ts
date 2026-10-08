@@ -10,16 +10,17 @@ export interface FundProfileResponse {
 export async function getFundProfiles(
   cursor?: string
 ) {
-  return secFetch(
-    "/v2/fund/general-info/profiles",
-  );
+  return secFetch<any>(
+  "/v2/fund/general-info/profiles"
+);
 }
 
 export async function getFundById(id: string) {
   const response = await getFundProfiles();
 
   return response.items.find(
-    (item) => item.proj_id === id
+    (item: any) => 
+     item.proj_id === id
   );
 }
 
@@ -30,7 +31,7 @@ export async function searchFunds(
 
   const search = keyword.toLowerCase();
 
-  return response.items.filter((item) =>
+  return response.items.filter((item: any) =>
     item.proj_abbr_name
       ?.toLowerCase()
       .includes(search) ||
@@ -49,7 +50,7 @@ export async function getFundsByPolicy(
   const response = await getFundProfiles();
 
   return response.items.filter(
-    (item) =>
+     (item: any) => 
       item.policy_desc === policy
   );
 }
@@ -60,7 +61,7 @@ export async function getFundsByAMC(
   const response = await getFundProfiles();
 
   return response.items.filter(
-    (item) =>
+     (item: any) =>
       item.comp_name_th === amcName
   );
 }

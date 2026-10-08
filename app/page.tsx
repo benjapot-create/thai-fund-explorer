@@ -2,7 +2,7 @@ import FundList from "@/components/FundList";
 import { getFundProfiles } from "@/services/fund/fundProfileService";
 
 export default async function Home() {
-const response = await getFundProfiles();
+const response:any = await getFundProfiles();
 const funds = response.items ?? [];
 
 return ( <main className="min-h-screen bg-[#F5F7F6] text-slate-900">
@@ -223,7 +223,5 @@ return ( <main className="min-h-screen bg-[#F5F7F6] text-slate-900">
     </footer>
   </div>
 </main>
-
-
 );
 }

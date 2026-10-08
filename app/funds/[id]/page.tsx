@@ -201,7 +201,7 @@ function InfoItem({
       </p>
 
       <p className="mt-1 text-sm font-semibold text-slate-800">
-        {value || "-"}
+        {String(value ?? "-")}
       </p>
     </div>
   );
@@ -214,7 +214,7 @@ function InfoCard({
 }: {
   icon: string;
   title: string;
-  value: unknown;
+  value?: string | number | null;
 }) {
   return (
     <div className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
@@ -229,7 +229,7 @@ function InfoCard({
           </p>
 
           <p className="mt-1 break-words text-base font-semibold text-slate-800">
-            {value || "-"}
+            {String(value ?? "-")}
           </p>
         </div>
       </div>
