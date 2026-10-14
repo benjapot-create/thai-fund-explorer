@@ -7,20 +7,23 @@ export interface FundProfileResponse {
   items: any[];
 }
 
+
 export async function getFundProfiles(
   cursor?: string
 ) {
-  return secFetch<any>(
-  "/v2/fund/general-info/profiles"
-);
+  return secFetch<FundProfileResponse>(
+    "/v2/fund/general-info/profiles",
+    { cursor }
+  );
 }
+
 
 export async function getFundById(id: string) {
   const response = await getFundProfiles();
 
   return response.items.find(
-    (item: any) => 
-     item.proj_id === id
+    (item: any) =>
+      String(item.proj_id).trim() === id.trim()
   );
 }
 
@@ -55,13 +58,42 @@ export async function getFundsByPolicy(
   );
 }
 
-export async function getFundsByAMC(
-  amcName: string
-) {
-  const response = await getFundProfiles();
 
-  return response.items.filter(
-     (item: any) =>
-      item.comp_name_th === amcName
+export async function getAllFundProfiles() {
+  const allItems: any[] = [];
+  const seenIds = new Set<string>();
+  let cursor: string | undefined;
+
+  do {
+    const response = await getFundProfiles(cursor);
+
+    for (const item of response.items ?? []) {
+      // ใช้ unique_id ตรวจสอบรายการซ้ำ
+      const id = item.unique_id
+        ? String(item.unique_id).trim()
+        : "";
+
+      if (id && seenIds.has(id)) {
+        continue;
+      }
+
+      if (id) {
+        seenIds.add(id);
+      }
+
+      allItems.push(item);
+    }
+
+    cursor = response.next_cursor || undefined;
+  } while (cursor);
+
+  return allItems;
+}
+
+export async function getFundsByAMC(amcName: string) {
+  const items = await getAllFundProfiles();
+
+  return items.filter(
+    (item: any) => item.comp_name_th === amcName
   );
 }

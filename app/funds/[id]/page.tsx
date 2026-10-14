@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getFundById } from "@/services/fund/fundProfileService";
+import { getFundRiskSpectrum } from "@/services/fund/fundRiskService";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,45 @@ export default async function FundDetailPage({ params }: Props) {
       </main>
     );
   }
+
+  let fundRisk: {
+  risk_spectrum: string;
+  risk_spectrum_desc: string;
+  end_date: string;
+} | null = null;
+
+let riskError = false;
+
+try {
+  const riskResponse = await getFundRiskSpectrum([
+    String(fund.proj_id).trim(),
+  ]);
+
+  const matchedRisks = (riskResponse.items ?? [])
+    .filter(
+      (item) =>
+        String(item.proj_id).trim() ===
+        String(fund.proj_id).trim()
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.end_date).getTime() -
+        new Date(a.end_date).getTime()
+    );
+
+  const latestRisk = matchedRisks[0];
+
+  if (latestRisk) {
+    fundRisk = {
+      risk_spectrum: latestRisk.risk_spectrum,
+      risk_spectrum_desc: latestRisk.risk_spectrum_desc,
+      end_date: latestRisk.end_date,
+    };
+  }
+} catch (error) {
+  console.error("Fund detail risk error:", error);
+  riskError = true;
+}
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -162,6 +202,58 @@ export default async function FundDetailPage({ params }: Props) {
           </div>
         </section>
 
+        {/* Fund Risk Spectrum */}
+<section className="mt-8">
+  <div className="mb-4">
+    <h2 className="text-xl font-bold text-slate-800">
+      ระดับความเสี่ยงกองทุน
+    </h2>
+
+    <p className="mt-1 text-sm text-slate-500">
+      ข้อมูลระดับความเสี่ยงจาก SEC
+    </p>
+  </div>
+
+  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    {riskError ? (
+      <p className="text-sm text-red-600">
+        ไม่สามารถโหลดข้อมูลระดับความเสี่ยงได้
+      </p>
+    ) : fundRisk ? (
+      <>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+            <span className="text-xs font-medium">
+              Risk Level
+            </span>
+
+            <span className="text-3xl font-bold">
+              {fundRisk.risk_spectrum}
+            </span>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-slate-800">
+              ระดับความเสี่ยง {fundRisk.risk_spectrum}
+            </h3>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {fundRisk.risk_spectrum_desc || "-"}
+            </p>
+
+            <p className="mt-3 text-xs text-slate-400">
+              วันที่สิ้นสุดข้อมูล: {fundRisk.end_date || "-"}
+            </p>
+          </div>
+        </div>
+      </>
+    ) : (
+      <p className="text-sm text-slate-500">
+        ไม่พบข้อมูลระดับความเสี่ยงของกองทุนนี้
+      </p>
+    )}
+  </div>
+</section>
         {/* Raw Data */}
         <section className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <details>

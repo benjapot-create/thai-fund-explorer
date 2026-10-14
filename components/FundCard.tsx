@@ -2,20 +2,36 @@ import Link from "next/link";
 
 type Props = {
   fund: any;
+  selected?: boolean;
+  onToggle?: (fund: any) => void;
 };
 
-export default function FundCard({ fund }: Props) {
+export default function FundCard({
+  fund,
+  
+  selected = false,
+  onToggle,
+}: Props) {
   return (
-    <div className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-900/5">
-
+    <div
+      className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+        selected
+          ? "border-blue-500 ring-2 ring-blue-200 shadow-lg shadow-blue-900/10"
+          : "border-slate-200/80 shadow-sm hover:border-blue-200 hover:shadow-blue-900/5"
+      }`}
+    >
       {/* Top accent */}
-      <div className="h-1.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-violet-500" />
+      <div
+        className={`h-1.5 ${
+          selected
+            ? "bg-gradient-to-r from-blue-600 via-indigo-500 to-violet-500"
+            : "bg-gradient-to-r from-slate-200 to-slate-300"
+        }`}
+      />
 
       <div className="flex flex-1 flex-col p-6">
-
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
-
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 text-blue-700 ring-1 ring-blue-100">
               <svg
@@ -55,10 +71,9 @@ export default function FundCard({ fund }: Props) {
           </span>
         </div>
 
-        {/* Divider */}
         <div className="my-5 border-t border-slate-100" />
 
-        {/* Fund name */}
+        {/* Fund information */}
         <div className="flex-1">
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
             FUND INFORMATION
@@ -97,8 +112,44 @@ export default function FundCard({ fund }: Props) {
           </div>
         </div>
 
+      
+        {/* Compare Checkbox */}
+      <label
+        className={`mt-5 flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-all ${
+        selected
+      ? "border-blue-300 bg-blue-50"
+      : "border-slate-200 bg-slate-50 hover:border-blue-200"
+  }`}
+>
+  <input
+    type="checkbox"
+    checked={selected}
+    onChange={() => onToggle?.(fund)}
+    aria-label="เลือกเพื่อเปรียบเทียบ"
+    className="h-5 w-5 shrink-0 cursor-pointer appearance-auto accent-blue-600"
+  />
+
+  <div className="min-w-0 flex-1">
+    <p
+      className={`text-sm font-semibold ${
+        selected ? "text-blue-700" : "text-slate-700"
+      }`}
+    >
+      {selected
+        ? "✓ เลือกเพื่อเปรียบเทียบแล้ว"
+        : "เลือกเพื่อเปรียบเทียบ"}
+    </p>
+
+    <p className="mt-0.5 text-xs text-slate-500">
+      {selected
+        ? "คลิกเพื่อยกเลิกการเลือก"
+        : "เปรียบเทียบกับกองทุนอื่น"}
+    </p>
+  </div>
+</label>
+
         {/* Footer */}
-        <div className="mt-6 border-t border-slate-100 pt-4">
+        <div className="mt-5 border-t border-slate-100 pt-4">
           <Link
             href={`/funds/${fund.proj_id}`}
             className="flex w-full items-center justify-between rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-blue-700"
@@ -121,7 +172,6 @@ export default function FundCard({ fund }: Props) {
             </svg>
           </Link>
         </div>
-
       </div>
     </div>
   );

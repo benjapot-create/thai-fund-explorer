@@ -85,37 +85,38 @@ return ( <main className="min-h-screen bg-[#F5F7F6] text-slate-900">
       aria-label="Fund statistics"
       className="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
     >
-      <div className="group rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500">
-              กองทุนในระบบ
-            </p>
-            <h2 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">
-              {funds.length.toLocaleString("th-TH")}
-            </h2>
-            <p className="mt-2 text-xs text-slate-500">
-              รายการข้อมูลที่ได้รับจาก API
-            </p>
-          </div>
+<div className="group rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md">
+  <div className="flex items-start justify-between">
+    <div>
+      <p className="text-sm font-medium text-slate-500">
+        เปรียบเทียบกองทุน
+      </p>
+      <h2 className="mt-3 text-2xl font-bold text-slate-900">
+        Compare Funds
+      </h2>
+      <p className="mt-2 text-xs text-slate-500">
+        เลือกกองทุนที่สนใจเพื่อเปรียบเทียบข้อมูล
+      </p>
+    </div>
 
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              className="h-6 w-6"
-            >
-              <path
-                d="M4 19.5V5.8A1.8 1.8 0 0 1 5.8 4H20v16H5.8A1.8 1.8 0 0 1 4 18.2M4 16h16M8 8h7M8 11h5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        </div>
-      </div>
+    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        className="h-6 w-6"
+      >
+        <path
+          d="M4 19V5M4 19h16M8 15v-4M12 15V7M16 15v-6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  </div>
+</div>
+
 
       <div className="group rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md">
         <div className="flex items-start justify-between">
