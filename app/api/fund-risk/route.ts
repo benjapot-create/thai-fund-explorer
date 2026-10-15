@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { secFetch } from "../../../services/secClient";
-import type { FundRiskResponse } from "../../../services/fund/fundRiskService";
+import type { FundRiskResponse } from "../../../services/fund/fundRiskService.ts";
 
 export async function GET(request: NextRequest) {
   try {

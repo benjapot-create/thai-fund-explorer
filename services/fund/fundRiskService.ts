@@ -1,3 +1,4 @@
+
 export interface FundRiskSpectrum {
   proj_id: string;
   start_date: string;
@@ -15,7 +16,6 @@ export interface FundRiskResponse {
   items: FundRiskSpectrum[];
 }
 
-
 function getLatestFundRisk(
   items: FundRiskSpectrum[]
 ): FundRiskSpectrum[] {
@@ -27,10 +27,15 @@ function getLatestFundRisk(
 
     const current = latestByFund.get(id);
 
+    const itemDate = Date.parse(item.last_upd_date);
+    const currentDate = current
+      ? Date.parse(current.last_upd_date)
+      : Number.NEGATIVE_INFINITY;
+
     if (
       !current ||
-      new Date(item.last_upd_date).getTime() >
-        new Date(current.last_upd_date).getTime()
+      (Number.isFinite(itemDate) &&
+        (!Number.isFinite(currentDate) || itemDate > currentDate))
     ) {
       latestByFund.set(id, item);
     }
@@ -39,57 +44,21 @@ function getLatestFundRisk(
   return Array.from(latestByFund.values());
 }
 
-
 export async function getFundRiskSpectrum(
   selectedIds?: string[]
 ): Promise<FundRiskResponse> {
+  // ใช้ URL ปัจจุบันของเซิร์ฟเวอร์ในกรณีไม่ได้กำหนด URL
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    "http://localhost:3000";
 
-  // ถ้าระบุรหัสกองทุน ให้ค้นหาเฉพาะแต่ละรหัส
-  if (selectedIds && selectedIds.length > 0) {
-    const uniqueIds = [
-      ...new Set(selectedIds.map((id) => id.trim()).filter(Boolean)),
-    ];
-
-    const responses = await Promise.all(
-      uniqueIds.map(async (projId) => {
-        const url = new URL("/api/fund-risk", baseUrl);
-        url.searchParams.set("proj_id", projId);
-
-        const response = await fetch(url.toString(), {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error(`Fund risk API Error: ${response.status}`);
-        }
-
-        const data = (await response.json()) as FundRiskResponse;
-        return data.items ?? [];
-      })
-    );
-
-    const latestItems = getLatestFundRisk(responses.flat());
-
-    return {
-      message: "success",
-      page_size: latestItems.length,
-      next_cursor: null,
-      items: latestItems,
-    };
-  }
-
-  // กรณีไม่ได้ระบุรหัสกองทุน คงพฤติกรรมเดิมในการดึงข้อมูลแบบแบ่งหน้า
-  const allItems: FundRiskSpectrum[] = [];
-  let cursor: string | null = null;
-  let pageCount = 0;
-  const maxPages = 20;
-
-  do {
+  async function fetchRiskPage(
+    params: Record<string, string> = {}
+  ): Promise<FundRiskResponse> {
     const url = new URL("/api/fund-risk", baseUrl);
-    if (cursor) {
-      url.searchParams.set("cursor", cursor);
+
+    for (const [key, value] of Object.entries(params)) {
+      url.searchParams.set(key, value);
     }
 
     const response = await fetch(url.toString(), {
@@ -97,31 +66,88 @@ export async function getFundRiskSpectrum(
     });
 
     if (!response.ok) {
-      throw new Error(`Fund risk API Error: ${response.status}`);
+      const detail = await response.text().catch(() => "");
+      throw new Error(
+        `Fund risk API Error: ${response.status} ${response.statusText}` +
+          (detail ? ` - ${detail.slice(0, 300)}` : "")
+      );
     }
 
     const data = (await response.json()) as FundRiskResponse;
-    allItems.push(...(data.items ?? []));
-    cursor = data.next_cursor || null;
-    pageCount++;
-  } while (cursor && pageCount < maxPages);
+
+    if (!Array.isArray(data.items)) {
+      throw new Error("Fund risk API returned an invalid items array");
+    }
+
+    return data;
+  }
+
+  let allItems: FundRiskSpectrum[] = [];
+
+  if (selectedIds?.length) {
+    const uniqueIds = [
+      ...new Set(
+        selectedIds.map((id) => id.trim()).filter(Boolean)
+      ),
+    ];
+
+    const responses = await Promise.all(
+      uniqueIds.map((projId) =>
+        fetchRiskPage({ proj_id: projId })
+      )
+    );
+
+    allItems = responses.flatMap((data) => data.items);
+  } else {
+    let cursor: string | null = null;
+    const seenCursors = new Set<string>();
+    const maxPages = 20;
+    let pageCount = 0;
+
+    do {
+      const params: Record<string, string> = {};
+
+      if (cursor) {
+        params.cursor = cursor;
+      }
+
+      const data = await fetchRiskPage(params);
+      allItems.push(...data.items);
+
+      cursor = data.next_cursor || null;
+      pageCount++;
+
+      if (cursor) {
+        if (seenCursors.has(cursor)) {
+          throw new Error("Fund risk API returned a repeated cursor");
+        }
+        seenCursors.add(cursor);
+      }
+    } while (cursor && pageCount < maxPages);
+
+    if (cursor) {
+      console.warn(
+        `Fund risk pagination stopped after ${maxPages} pages.`
+      );
+    }
+  }
 
   const latestItems = getLatestFundRisk(allItems);
+
+  console.info("Latest Fund Risk:", {
+    total: latestItems.length,
+    items: latestItems.map((item) => ({
+      proj_id: item.proj_id,
+      last_upd_date: item.last_upd_date,
+      risk_spectrum: item.risk_spectrum,
+      risk_spectrum_desc: item.risk_spectrum_desc,
+    })),
+  });
 
   return {
     message: "success",
     page_size: latestItems.length,
-    next_cursor: cursor,
+    next_cursor: null,
     items: latestItems,
   };
-
-  console.log(
-  "Latest Fund Risk:",
-  latestItems.map((item) => ({
-    proj_id: item.proj_id,
-    last_upd_date: item.last_upd_date,
-    risk_spectrum: item.risk_spectrum,
-    risk_spectrum_desc: item.risk_spectrum_desc,
-  }))
-);
 }
