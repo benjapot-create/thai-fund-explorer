@@ -18,7 +18,7 @@ type FundProfileJson = {
 let profilesCache: Promise<any[]> | null = null;
 
 
-async function loadFundProfiles(): Promise<any[]> {
+/*async function loadFundProfiles(): Promise<any[]> {
   const url = process.env.FUND_PROFILE_JSON_URL;
 
   if (!url) {
@@ -59,8 +59,63 @@ console.log("FUND_PROFILE_JSON_URL protocol:", url ? new URL(url).protocol : "mi
       item.proj_id != null &&
       String(item.proj_id).trim() !== ""
   );
-}
+}*/
  
+
+async function loadFundProfiles(): Promise<any[]> {
+  const url = process.env.FUND_PROFILE_JSON_URL?.trim();
+
+  if (!url) {
+    throw new Error("Missing FUND_PROFILE_JSON_URL environment variable");
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `Fund Profile JSON error ${response.status}: ${responseText.slice(0, 300)}`
+    );
+  }
+
+  let json: any;
+
+  try {
+    json = JSON.parse(responseText);
+  } catch {
+    throw new Error(
+      `FUND_PROFILE_JSON_URL returned non-JSON: ${responseText.slice(0, 300)}`
+    );
+  }
+
+  let items: any[];
+
+  if (Array.isArray(json)) {
+    items = json;
+  } else if (Array.isArray(json.items)) {
+    items = json.items;
+  } else if (Array.isArray(json.data)) {
+    items = json.data;
+  } else if (Array.isArray(json.funds)) {
+    items = json.funds;
+  } else {
+    throw new Error("Unsupported Fund Profile JSON format");
+  }
+
+  return items.filter(
+    (item: any) =>
+      item &&
+      item.proj_id != null &&
+      String(item.proj_id).trim() !== ""
+  );
+}
+
 async function getCachedFundProfiles(): Promise<any[]> {
   if (!profilesCache) {
     profilesCache = loadFundProfiles().catch((error) => {
