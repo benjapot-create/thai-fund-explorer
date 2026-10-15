@@ -1,4 +1,3 @@
-
 import { secFetch } from "../secClient";
 
 export interface FundFactsheetItem {
@@ -25,13 +24,25 @@ export async function getFundFactsheetUrls(
   cursor?: string,
   projId?: string
 ): Promise<FundFactsheetResponse> {
-  return secFetch<FundFactsheetResponse>(
+  console.log("Factsheet request:", { cursor, projId });
+
+  const response = await secFetch<FundFactsheetResponse>(
     "/v2/fund/factsheet/urls",
     {
       cursor,
       projId,
     }
   );
+
+  console.log("Factsheet response:", {
+    projId,
+    page_size: response?.page_size,
+    next_cursor: response?.next_cursor,
+    itemsLength: response?.items?.length,
+    firstItem: response?.items?.[0],
+  });
+
+  return response;
 }
 
 /**
@@ -47,7 +58,10 @@ export async function getAllFundFactsheetUrls(
   do {
     const response = await getFundFactsheetUrls(cursor, projId);
 
-    for (const item of response.items ?? []) {
+    if (!response) {
+  break;
+    }
+      for (const item of response.items ?? []) {
       const id = [
         item.proj_id,
         item.fund_class_name ?? "",
@@ -93,3 +107,6 @@ export async function getLatestFundFactsheet(
 
   return items[0] ?? null;
 }
+
+
+

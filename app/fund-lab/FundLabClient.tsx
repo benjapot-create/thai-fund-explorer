@@ -472,11 +472,14 @@ const matchesPolicy =
     [funds, selectedIds]
   );
 
-/*โหลดข้อมูล Risk Spectrum*/
- useEffect(() => {
+
+/* โหลดข้อมูล Risk Spectrum */
+
+useEffect(() => {
   console.log("Risk useEffect started:", selectedIds);
 
   if (selectedIds.length === 0) {
+    setRiskById({});
     setRiskLoading(false);
     setRiskError("");
     return;
@@ -489,35 +492,51 @@ const matchesPolicy =
     setRiskError("");
 
     try {
-      console.log("Before calling risk service");
-
       const response = await getFundRiskSpectrum(selectedIds);
+
+      if (cancelled) return;
 
       console.log("Risk response:", response.items);
       console.log("Selected IDs:", selectedIds);
 
-      if (cancelled) return;
+      // เลือกเฉพาะรายการวันที่ล่าสุดของแต่ละกองทุน
+      const latestById: typeof riskById = {};
 
-      setRiskById((previous) => {
-        const updated = { ...previous };
+      for (const item of response.items ?? []) {
+        const id = item.proj_id?.trim();
+        if (!id) continue;
 
-        for (const item of response.items ?? []) {
-          const id = item.proj_id?.trim();
-          if (!id) continue;
+        const itemTime = new Date(item.last_upd_date).getTime();
+        if (!Number.isFinite(itemTime)) continue;
 
-          const current = updated[id];
+        const current = latestById[id];
+        const currentTime = current
+          ? new Date(current.last_upd_date).getTime()
+          : Number.NaN;
 
-          if (
-            !current ||
-            new Date(item.last_upd_date).getTime() >=
-              new Date(current.last_upd_date).getTime()
-          ) {
-            updated[id] = item;
-          }
+        if (!current || !Number.isFinite(currentTime) || itemTime >= currentTime) {
+          latestById[id] = item;
         }
+      }
 
-        return updated;
-      });
+      if (!cancelled) {
+        setRiskById((previous) => {
+          const updated = { ...previous };
+
+          // อัปเดตเฉพาะกองทุนที่เลือก โดยคงข้อมูลกองทุนอื่นไว้
+          for (const id of selectedIds) {
+            const normalizedId = id.trim();
+
+            if (latestById[normalizedId]) {
+              updated[normalizedId] = latestById[normalizedId];
+            } else {
+              delete updated[normalizedId];
+            }
+          }
+
+          return updated;
+        });
+      }
     } catch (error) {
       console.error("โหลดข้อมูลความเสี่ยงไม่สำเร็จ:", error);
 
@@ -537,6 +556,7 @@ const matchesPolicy =
     cancelled = true;
   };
 }, [selectedIds]);
+
 
 /*โหลด NAV ล่าสุด*/
 useEffect(() => {
@@ -959,7 +979,7 @@ setNavMultiPeriodData(multiPeriodResults);
   ];
 
 
-const navCompareChartData = useMemo(() => {
+  const navCompareChartData = useMemo(() => {
   const byDate = new Map<
     string,
     Record<string, string | number | null>
@@ -991,89 +1011,88 @@ const navCompareChartData = useMemo(() => {
   }
 
   return rows;
-}, [navCompareData]);
+  }, [navCompareData]);
 
 
-const navCompareColors = [
+  const navCompareColors = [
   "#2563eb",
   "#059669",
   "#d97706",
   "#9333ea",
-];
+  ];
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-800">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* ส่วนหัว */}
         <section className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0F172A] via-[#172554] to-[#1E40AF] p-5 text-white shadow-lg shadow-slate-900/10 sm:p-8">
-  {/* Decorative background */}
-  <div
-    aria-hidden="true"
-    className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full border border-white/[0.08]"
-  />
-  <div
-    aria-hidden="true"
-    className="pointer-events-none absolute -bottom-24 right-24 h-52 w-52 rounded-full bg-blue-400/[0.08] blur-3xl"
-  />
-
-  <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center sm:gap-8">
-    <div className="min-w-0">
-      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-3 py-1.5 text-xs font-medium tracking-wide text-emerald-200">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-        FUND RESEARCH WORKSPACE
-      </span>
-
-      <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight sm:mt-6 sm:text-4xl lg:text-5xl">
-        เปรียบเทียบกองทุน
-      </h1>
-
-      <p className="mt-3 max-w-xl text-sm leading-7 text-slate-300 sm:mt-4 sm:text-base">
-        ค้นหา กรอง และเปรียบเทียบข้อมูลกองทุนในหน้าเดียว
-      </p>
-    </div>
-
-    <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:min-w-[260px]">
-      <div className="rounded-xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-sm">
-        <p className="text-xs leading-5 text-slate-300">
-          กองทุนทั้งหมด
-        </p>
-        <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
-          {funds.length.toLocaleString("th-TH")}
-        </p>
-        <p className="mt-1 text-xs text-slate-400">
-          รายการ
-        </p>
-      </div>
-
-      <div className="rounded-xl border border-emerald-300/20 bg-emerald-300/[0.07] p-4 backdrop-blur-sm">
-        <p className="text-xs leading-5 text-emerald-100/80">
-          เลือกเปรียบเทียบ
-        </p>       
-        <p className="mt-2 flex items-baseline gap-1.5 text-2xl font-extrabold tabular-nums tracking-tight text-emerald-300 sm:text-3xl">
-        <span>{selectedIds.length}</span>
-        <span className="text-2xl font-extrabold text-emerald-300 sm:text-3xl">
-        / 4
-        </span>
-        </p>
-
+        {/* Decorative background */}
         <div
-          className="mt-3 h-1 overflow-hidden rounded-full bg-white/10"
-          role="progressbar"
-          aria-label="จำนวนกองทุนที่เลือกเปรียบเทียบ"
-          aria-valuemin={0}
-          aria-valuemax={4}
-          aria-valuenow={Math.min(selectedIds.length, 4)}
-        >
-          <div
-            className="h-full rounded-full bg-emerald-400 transition-all duration-300"
-            style={{
-              width: `${Math.min(selectedIds.length / 4, 1) * 100}%`,
-            }}
-          />
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full border border-white/[0.08]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-24 right-24 h-52 w-52 rounded-full bg-blue-400/[0.08] blur-3xl"
+        />
+        <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center sm:gap-8">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-3 py-1.5 text-xs font-medium tracking-wide text-emerald-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              FUND RESEARCH WORKSPACE
+            </span>
+
+            <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight sm:mt-6 sm:text-4xl lg:text-5xl">
+              เปรียบเทียบกองทุน
+            </h1>
+
+            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-300 sm:mt-4 sm:text-base">
+              ค้นหา กรอง และเปรียบเทียบข้อมูลกองทุนในหน้าเดียว
+            </p>
+          </div>
+
+          <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:min-w-[260px]">
+            <div className="rounded-xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-sm">
+              <p className="text-xs leading-5 text-slate-300">
+                กองทุนทั้งหมด
+              </p>
+              <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">
+                {funds.length.toLocaleString("th-TH")}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                รายการ
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-emerald-300/20 bg-emerald-300/[0.07] p-4 backdrop-blur-sm">
+              <p className="text-xs leading-5 text-emerald-100/80">
+                เลือกเปรียบเทียบ
+              </p>       
+              <p className="mt-2 flex items-baseline gap-1.5 text-2xl font-extrabold tabular-nums tracking-tight text-emerald-300 sm:text-3xl">
+              <span>{selectedIds.length}</span>
+              <span className="text-2xl font-extrabold text-emerald-300 sm:text-3xl">
+              / 4
+              </span>
+              </p>
+
+              <div
+                className="mt-3 h-1 overflow-hidden rounded-full bg-white/10"
+                role="progressbar"
+                aria-label="จำนวนกองทุนที่เลือกเปรียบเทียบ"
+                aria-valuemin={0}
+                aria-valuemax={4}
+                aria-valuenow={Math.min(selectedIds.length, 4)}
+              >
+                <div
+                  className="h-full rounded-full bg-emerald-400 transition-all duration-300"
+                  style={{
+                    width: `${Math.min(selectedIds.length / 4, 1) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
         </section>
 
         {/* ค้นหาและตัวกรอง */}
@@ -1523,7 +1542,56 @@ const navCompareColors = [
       );
     })}
   </tr>,
-  // คง <tr key="risk-spectrum-row"> และโค้ด Risk เดิมต่อจากตรงนี้
+  
+  <tr
+    key="risk-spectrum-row"
+    className="bg-amber-50/70"
+  >
+    <th className="sticky left-0 z-10 w-52 min-w-52 border-b border-r border-amber-100 bg-amber-50 px-4 py-4 text-left align-top font-semibold text-amber-950">
+      ระดับความเสี่ยง
+    </th>
+
+    {selectedFunds.map((fund) => {
+      const id = getText(fund.proj_id);
+      const risk = riskById[id];
+
+      return (
+        <td
+          key={`${id}-risk`}
+          className="border-b border-amber-100 px-5 py-4 align-top"
+        >
+          {riskLoading && !risk ? (
+            <span className="text-sm text-slate-500">
+              กำลังโหลด Risk...
+            </span>
+          ) : risk ? (
+            <div className="space-y-2">
+              <p className="text-lg font-bold text-amber-800">
+                {risk.risk_spectrum || "ไม่มีข้อมูล"}
+              </p>
+
+              <p className="text-sm leading-5 text-slate-700">
+                {risk.risk_spectrum_desc || "ไม่มีคำอธิบายความเสี่ยง"}
+              </p>
+
+              <p className="text-xs leading-5 text-slate-500">
+                ประเภทหนังสือชี้ชวน: {risk.prospectus_type || "-"}
+              </p>
+
+              <p className="text-xs leading-5 text-slate-500">
+                วันที่ปรับปรุง: {formatDateTime(risk.last_upd_date)}
+              </p>
+            </div>
+          ) : (
+            <span className="text-sm text-slate-500">
+              {riskError || "ไม่มีข้อมูล Risk"}
+            </span>
+          )}
+        </td>
+      );
+    })}
+  </tr>,
+
       ];
     })}
   </tbody>
@@ -1532,7 +1600,8 @@ const navCompareColors = [
             </div>
           )}
         </section>
-                {/* เปรียบเทียบการเปลี่ยนแปลง NAV */}
+        
+        {/* เปรียบเทียบการเปลี่ยนแปลง NAV */}
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>

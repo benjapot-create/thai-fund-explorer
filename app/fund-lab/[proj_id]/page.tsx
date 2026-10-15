@@ -1,5 +1,7 @@
 import FundNavHistoryChart from "./FundNavHistoryChart";
 import Link from "next/link";
+import { getFundById } from "@/services/fund/fundProfileService";
+import { getFundRiskSpectrum } from "@/services/fund/fundRiskService";
 
 type FundFactsheetItem = {
   proj_id: string;
@@ -87,6 +89,12 @@ function formatThaiDate(value: string | null): string {
   return `${match[3]}/${match[2]}/${Number(match[1]) + 543}`;
 }
 
+/*เพิ่มฟังก์ชันช่วยแปลงระดับความเสี่ยง*/
+function getRiskLevel(value: string): number | null {
+  const match = value.trim().match(/^RS([1-8])$/i);
+  return match ? Number(match[1]) : null;
+}
+
 
 
 export default async function FundDetailPage({
@@ -97,12 +105,14 @@ export default async function FundDetailPage({
   const { proj_id } = await params;
   console.log("FUND DETAIL PAGE:", proj_id);
 
-  const factsheet = await getFundFactsheet(proj_id);
-  const funds = await getFunds();
+  const [factsheet, fund, riskResponse] = await Promise.all([
+    getFundFactsheet(proj_id),
+    getFundById(proj_id),
+    getFundRiskSpectrum([proj_id]),
+  ]);
 
-  const fund = funds.find(
-    (item) => String(item.proj_id).trim() === proj_id.trim()
-  );
+  const risk = riskResponse.items?.[0] ?? null;
+  const riskLevel = risk ? getRiskLevel(risk.risk_spectrum) : null;
 
 
   return (
@@ -134,7 +144,7 @@ export default async function FundDetailPage({
         </p>
 
         {fund && (
-  <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
     <h2 className="text-xl font-bold">
       {fund.proj_name_th || fund.proj_name_en || "ไม่มีชื่อกองทุน"}
     </h2>
@@ -176,8 +186,104 @@ export default async function FundDetailPage({
         </dd>
       </div>
     </dl>
-  </section>
+        </section>
         )}
+
+    
+        <section className="mt-6 rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm sm:p-8">
+  <div className="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p className="text-sm font-semibold text-emerald-700">
+        FUND RISK PROFILE
+      </p>
+      <h2 className="mt-1 text-xl font-bold text-slate-900">
+        Risk Spectrum
+      </h2>
+      <p className="mt-1 text-sm text-slate-500">
+        ระดับความเสี่ยงของกองทุน
+      </p>
+    </div>
+
+
+    {riskLevel !== null && (
+  <div className="rounded-2xl border-2 border-emerald-600 bg-emerald-50 px-6 py-4 text-center shadow-sm">
+    <p className="text-sm font-semibold text-emerald-800">
+      ระดับความเสี่ยงของกองทุนนี้
+    </p>
+    <p className="mt-1 text-base font-semibold text-emerald-800">
+  ระดับ {riskLevel} / 8
+</p>
+  </div>
+    )}
+
+  </div>
+
+  <div className="mt-6 grid grid-cols-8 gap-1.5 sm:gap-2">
+    {[
+      { level: 1, color: "bg-emerald-600" },
+      { level: 2, color: "bg-green-500" },
+      { level: 3, color: "bg-lime-500" },
+      { level: 4, color: "bg-yellow-400" },
+      { level: 5, color: "bg-amber-400" },
+      { level: 6, color: "bg-orange-400" },
+      { level: 7, color: "bg-orange-600" },
+      { level: 8, color: "bg-red-600" },
+    ].map(({ level, color }) => (
+      <div key={level} className="min-w-0 text-center">
+        <div
+          className={`h-3 rounded-full ${color} ${
+            riskLevel === level
+              ? "ring-2 ring-slate-800 ring-offset-2"
+              : "opacity-65"
+          }`}
+        />
+        <p
+          className={`mt-2 text-sm ${
+            riskLevel === level
+              ? "font-bold text-slate-900"
+              : "text-slate-500"
+          }`}
+        >
+          {level}
+        </p>
+      </div>
+    ))}
+  </div>
+
+  <div className="mt-5 rounded-xl bg-slate-50 p-4">
+    <p className="text-sm font-medium text-slate-500">
+      คำอธิบายระดับความเสี่ยง
+    </p>
+    <p className="mt-1 font-semibold text-slate-800">
+      {risk?.risk_spectrum_desc || "ไม่มีคำอธิบายระดับความเสี่ยง"}
+    </p>
+
+    <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
+      <p>
+        วันที่ปรับปรุงล่าสุด:{" "}
+        <span className="font-medium text-slate-700">
+          {risk?.last_upd_date
+            ? formatThaiDate(risk.last_upd_date)
+            : "ไม่มีข้อมูล"}
+        </span>
+      </p>
+      {risk?.prospectus_type && (
+        <p>
+          ประเภทหนังสือชี้ชวน:{" "}
+          <span className="font-medium text-slate-700">
+            {risk.prospectus_type}
+          </span>
+        </p>
+      )}
+    </div>
+  </div>
+
+  {!risk && (
+    <p className="mt-4 text-sm text-amber-700">
+      ไม่พบข้อมูล Risk Spectrum สำหรับกองทุนนี้
+    </p>
+  )}
+        </section>
 
         {!factsheet ? (
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">

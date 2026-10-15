@@ -51,6 +51,10 @@ export async function getAllFundNav(
   do {
     const response = await getFundNav(cursor, projId);
 
+    if (!response) {
+    break;
+    }
+
     for (const item of response.items ?? []) {
       const id = [
         item.proj_id,

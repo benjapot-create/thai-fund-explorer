@@ -5,6 +5,8 @@ import { getLatestFundFactsheet } from "../../../services/fund/fundFactsheetServ
 export async function GET(request: NextRequest) {
   const projId = request.nextUrl.searchParams.get("proj_id");
 
+
+
   if (!projId) {
     return NextResponse.json(
       {
@@ -18,12 +20,18 @@ export async function GET(request: NextRequest) {
   try {
     const item = await getLatestFundFactsheet(projId);
 
+  console.log("Factsheet result:", {
+    projId,
+    isNull: item == null,
+    item,
+  });
     return NextResponse.json({
       message: "success",
       item,
     });
   } catch (error) {
     console.error("Fund Factsheet API error:", error);
+
 
     return NextResponse.json(
       {

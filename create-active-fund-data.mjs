@@ -1,26 +1,21 @@
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import {
+  readFile,
+  mkdir,
+  writeFile,
+  rename,
+  unlink,
+} from "node:fs/promises";
 import path from "node:path";
 
 const DATA_DIR = path.join(process.cwd(), "data");
+const SOURCE_FILE = path.join(DATA_DIR, "fund-profiles.json");
+const OUTPUT_FILE = path.join(DATA_DIR, "fund-profiles-active.json");
+const TEMP_FILE = `${OUTPUT_FILE}.tmp`;
 
-const SOURCE_FILE = path.join(
-  DATA_DIR,
-  "fund-profiles.json"
-);
-
-const OUTPUT_FILE = path.join(
-  DATA_DIR,
-  "fund-profiles-active.json"
-);
-
-const ALLOWED_STATUSES = new Set([
-  "Registered",
-  "IPO",
-]);
+const ALLOWED_STATUSES = new Set(["Registered", "IPO"]);
 
 async function main() {
-  // อ่านข้อมูลต้นฉบับเท่านั้น ไม่แก้ไขไฟล์นี้
   const raw = await readFile(SOURCE_FILE, "utf8");
   const funds = JSON.parse(raw);
 
@@ -28,37 +23,64 @@ async function main() {
     throw new Error("ไฟล์ต้นฉบับต้องเป็น JSON array");
   }
 
-  // เลือกเฉพาะสถานะที่ต้องการทดลอง
   const activeFunds = funds.filter(
     (fund) => ALLOWED_STATUSES.has(fund.fund_status)
   );
 
-  // ตรวจสอบจำนวน proj_id ที่ไม่ซ้ำ
-  const uniqueProjectIds = new Set(
-    activeFunds
-      .map((fund) => String(fund.proj_id ?? "").trim())
-      .filter(Boolean)
+  if (activeFunds.length === 0) {
+    throw new Error(
+      "ไม่พบข้อมูล Registered หรือ IPO จะไม่เขียนทับไฟล์เดิม"
+    );
+  }
+
+  const invalid = activeFunds.some(
+    (fund) => !String(fund.proj_id ?? "").trim()
   );
 
-  // สร้างไฟล์แยก ไม่เขียนทับต้นฉบับ
+  if (invalid) {
+    throw new Error(
+      "พบรายการที่ไม่มี proj_id กรุณาตรวจสอบข้อมูลก่อน"
+    );
+  }
+
   await mkdir(DATA_DIR, { recursive: true });
 
-  await writeFile(
-    OUTPUT_FILE,
-    JSON.stringify(activeFunds, null, 2),
-    "utf8"
-  );
+  try {
+    await writeFile(
+      TEMP_FILE,
+      JSON.stringify(activeFunds, null, 2),
+      "utf8"
+    );
+
+    const check = JSON.parse(
+      await readFile(TEMP_FILE, "utf8")
+    );
+
+    if (
+      !Array.isArray(check) ||
+      check.length !== activeFunds.length ||
+      check.some(
+        (fund) => !ALLOWED_STATUSES.has(fund.fund_status)
+      )
+    ) {
+      throw new Error("ตรวจสอบไฟล์ผลลัพธ์ไม่ผ่าน");
+    }
+
+    await rename(TEMP_FILE, OUTPUT_FILE);
+  } catch (error) {
+    await unlink(TEMP_FILE).catch(() => {});
+    throw error;
+  }
 
   const counts = activeFunds.reduce((result, fund) => {
-    const status = fund.fund_status ?? "(null)";
-    result[status] = (result[status] ?? 0) + 1;
+    result[fund.fund_status] =
+      (result[fund.fund_status] || 0) + 1;
     return result;
   }, {});
 
-  console.log("สร้างไฟล์ทดลองสำเร็จ");
+  console.log("\nสร้างไฟล์ข้อมูลสำเร็จ");
   console.log("ข้อมูลต้นฉบับทั้งหมด:", funds.length);
   console.log("ข้อมูลที่เลือก:", activeFunds.length);
-  console.log("proj_id ที่ไม่ซ้ำ:", uniqueProjectIds.size);
   console.log("แยกตามสถานะ:", counts);
   console.log("ไฟล์ผลลัพธ์:", OUTPUT_FILE);
 }
