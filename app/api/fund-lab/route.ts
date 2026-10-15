@@ -5,11 +5,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const fileUrl = process.env.FUND_LAB_JSON_URL;
+    const fileUrl = process.env.FUND_PROFILE_JSON_URL;
 
     if (!fileUrl) {
       return NextResponse.json(
-        { message: "ไม่พบ FUND_LAB_JSON_URL" },
+        { message: "ไม่พบ FUND_PROFILE_JSON_URL" },
         { status: 500 }
       );
     }

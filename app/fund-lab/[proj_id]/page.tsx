@@ -24,10 +24,10 @@ type FundProfile = {
 };
 
 async function getFunds(): Promise<FundProfile[]> {
-  const fileUrl = process.env.FUND_LAB_JSON_URL;
+  const fileUrl = process.env.FUND_PROFILE_JSON_URL;
 
   if (!fileUrl) {
-    throw new Error("ไม่พบ FUND_LAB_JSON_URL ใน Environment Variables");
+    throw new Error("ไม่พบ FUND_PROFILE_JSON_URL ใน Environment Variables");
   }
 
   const response = await fetch(fileUrl, {
@@ -51,34 +51,6 @@ async function getFunds(): Promise<FundProfile[]> {
 
 
 const currentYear = new Date().getFullYear();
-
-/*async function getFundFactsheet(
-  projId: string
-): Promise<FundFactsheetItem | null> {
-  const baseUrl = process.env.APP_BASE_URL?.trim();
-   if (!baseUrl) {
-    throw new Error("Missing APP_BASE_URL environment variable");
-  }
-  const response = await fetch(
-    `${baseUrl}/api/fund-factsheet?proj_id=${encodeURIComponent(projId)}`,
-    { cache: "no-store" }
-  );
-
-  if (!response.ok) {
-    throw new Error("ไม่สามารถโหลดข้อมูล Fund Factsheet ได้");
-  }
-
-  const data: {
-    message: string;
-    item: FundFactsheetItem | null;
-  } = await response.json();
-
-  if (data.message !== "success") {
-    throw new Error("API Fund Factsheet ส่งข้อมูลไม่สำเร็จ");
-  }
-
-  return data.item;
-}*/
 
 async function getFundFactsheet(
   projId: string
