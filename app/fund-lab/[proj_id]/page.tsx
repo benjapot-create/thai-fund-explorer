@@ -55,9 +55,10 @@ const currentYear = new Date().getFullYear();
 async function getFundFactsheet(
   projId: string
 ): Promise<FundFactsheetItem | null> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-
+  const baseUrl = process.env.APP_BASE_URL?.trim();
+   if (!baseUrl) {
+    throw new Error("Missing APP_BASE_URL environment variable");
+  }
   const response = await fetch(
     `${baseUrl}/api/fund-factsheet?proj_id=${encodeURIComponent(projId)}`,
     { cache: "no-store" }
