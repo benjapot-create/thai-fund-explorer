@@ -85,11 +85,29 @@ export async function getFundRiskSpectrum(
       );
     }
 
-    const data = (await response.json()) as FundRiskResponse;
+   /* const data = (await response.json()) as FundRiskResponse;
 
     if (!Array.isArray(data.items)) {
       throw new Error("Fund risk API returned an invalid items array");
-    }
+    }*/
+
+const responseText = await response.text();
+
+let data: FundRiskResponse;
+
+try {
+  data = JSON.parse(responseText) as FundRiskResponse;
+} catch {
+  throw new Error(
+    `Fund risk API returned non-JSON. URL: ${url.toString()}. ` +
+      `Response: ${responseText.slice(0, 300)}`
+  );
+}
+
+if (!Array.isArray(data.items)) {
+  throw new Error("Fund risk API returned an invalid items array");
+}
+  
 
     return data;
   }

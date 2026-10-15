@@ -323,16 +323,38 @@ function getNavCompareApiData(
         ),
       ]);
 
-    if (!factsheetResponse.ok || !historyResponse.ok) {
-      throw new Error(`โหลดข้อมูล NAV ของ ${id} ไม่สำเร็จ`);
-    }
+ 
+async function readJsonResponse(
+  response: Response,
+  apiName: string
+) {
+  const body = await response.text();
 
-    const [factsheetJson, historyJson] = await Promise.all([
-      factsheetResponse.json(),
-      historyResponse.json(),
-    ]);
+  if (!response.ok) {
+    throw new Error(
+      `${apiName} failed: HTTP ${response.status}. ` +
+      `Response: ${body.slice(0, 300)}`
+    );
+  }
 
-    return { factsheetJson, historyJson };
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new Error(
+      `${apiName} returned non-JSON. ` +
+      `URL: ${response.url}. ` +
+      `Response: ${body.slice(0, 300)}`
+    );
+  }
+}
+
+const [factsheetJson, historyJson] = await Promise.all([
+  readJsonResponse(factsheetResponse, "Fund factsheet API"),
+  readJsonResponse(historyResponse, "Fund NAV history API"),
+]);
+
+return { factsheetJson, historyJson };
+
   })();
 
   navCompareApiCache.set(id, request);
