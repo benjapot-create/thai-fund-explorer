@@ -1,7 +1,4 @@
 import FundNavHistoryChart from "./FundNavHistoryChart";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import FundLabClient from "../FundLabClient";
 import Link from "next/link";
 
 type FundFactsheetItem = {
@@ -13,6 +10,43 @@ type FundFactsheetItem = {
   as_of_date: string | null;
   last_upd_date: string | null;
 };
+
+type FundProfile = {
+  proj_id: string;
+  proj_name_th?: string;
+  proj_name_en?: string;
+  comp_name_th?: string;
+  proj_retail_type?: string;
+  policy_desc?: string;
+  investment_policy_desc?: string;
+};
+
+async function getFunds(): Promise<FundProfile[]> {
+  const fileUrl = process.env.FUND_LAB_JSON_URL;
+
+  if (!fileUrl) {
+    throw new Error("ไม่พบ FUND_LAB_JSON_URL ใน Environment Variables");
+  }
+
+  const response = await fetch(fileUrl, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `โหลดข้อมูลกองทุนจาก Cloudflare R2 ไม่สำเร็จ: HTTP ${response.status}`
+    );
+  }
+
+  const data: unknown = await response.json();
+
+  if (!Array.isArray(data)) {
+    throw new Error("ข้อมูลกองทุนจาก Cloudflare R2 ไม่ใช่ Array");
+  }
+
+  return data as FundProfile[];
+}
+
 
 const currentYear = new Date().getFullYear();
 
@@ -53,18 +87,7 @@ function formatThaiDate(value: string | null): string {
   return `${match[3]}/${match[2]}/${Number(match[1]) + 543}`;
 }
 
-async function getFundCount(): Promise<number> {
-  const filePath = path.join(
-    process.cwd(),
-    "data",
-    "fund-profiles-active.json"
-  );
 
-  const content = await readFile(filePath, "utf8");
-  const funds = JSON.parse(content);
-
-  return Array.isArray(funds) ? funds.length : 0;
-}
 
 export default async function FundDetailPage({
   params,
@@ -73,23 +96,15 @@ export default async function FundDetailPage({
 }) {
   const { proj_id } = await params;
   console.log("FUND DETAIL PAGE:", proj_id);
+
   const factsheet = await getFundFactsheet(proj_id);
-  const filePath = path.join(
-  process.cwd(),
-  "data",
-  "fund-profiles-active.json"
+  const funds = await getFunds();
+
+  const fund = funds.find(
+    (item) => String(item.proj_id).trim() === proj_id.trim()
   );
-  const content = await readFile(filePath, "utf8");
-  const funds = JSON.parse(content);
-  const fundCount = await getFundCount();
-  const fund = Array.isArray(funds)
-  ? funds.find(
-      (item) => String(item.proj_id).trim() === proj_id.trim()
-    )
-  : null;
 
 
- 
   return (
     <main className="min-h-screen bg-[#F5F7F6] text-slate-900">
       <header className="border-b border-slate-200 bg-white">

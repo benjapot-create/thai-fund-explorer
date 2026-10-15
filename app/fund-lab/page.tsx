@@ -1,10 +1,5 @@
-
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+export const dynamic = "force-dynamic";
 import FundLabClient from "./FundLabClient";
-
-
-
 
 export interface FundProfile {
   proj_id: string;
@@ -26,272 +21,178 @@ export interface FundProfile {
   proj_term_year?: number | null;
 }
 
-export default async function FundLabPage() {
-  const filePath = path.join(
-    process.cwd(),
-    "data",
-    "fund-profiles-active.json"
-  );
 
+export default async function FundLabPage() {
   let funds: FundProfile[];
 
   try {
-    const raw = await readFile(filePath, "utf8");
-    funds = JSON.parse(raw) as FundProfile[];
-  } catch {
-    throw new Error(
-      "ไม่สามารถอ่าน data/fund-profiles-active.json ได้ กรุณาตรวจสอบว่าไฟล์มีอยู่จริง"
-    );
-  }
+    const fileUrl = process.env.FUND_LAB_JSON_URL;
 
-  return (
-    <main className="min-h-screen bg-[#F5F7F6] text-slate-900">
-      {/* Navigation */}
-      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-8 sm:py-4">
-          <a href="/" className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-sm sm:h-11 sm:w-11 sm:rounded-2xl">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-5 w-5 sm:h-6 sm:w-6"
-                aria-hidden="true"
-              >
-                <path
-                  d="M3 17l6-6 4 3 8-9M15 5h6v6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
+    if (!fileUrl) {
+      throw new Error("ไม่พบ FUND_LAB_JSON_URL ใน .env.local");
+    }
 
-            <div className="min-w-0">
-              <p className="truncate text-base font-bold tracking-tight sm:text-lg">
-                Thai Fund Explorer
-              </p>
-              <p className="hidden text-xs text-slate-500 sm:block">
-                Fund Research &amp; Comparison
-              </p>
-            </div>
-          </a>
+    const response = await fetch(fileUrl, {
+      cache: "no-store",
+    });
 
-          <a
-            href="/"
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800 sm:px-4"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className="h-4 w-4"
-              aria-hidden="true"
-            >
-              <path
-                d="m15 18-6-6 6-6M9 12h12"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span>หน้าหลัก</span>
-          </a>
+    if (!response.ok) {
+      throw new Error(
+      `โหลดข้อมูลจาก Cloudflare R2 ไม่สำเร็จ: HTTP ${response.status}`
+      );
+    }
+
+    const parsed = await response.json();
+
+    if (!Array.isArray(parsed)) {
+      throw new Error("ข้อมูลกองทุนไม่ใช่ Array");
+    }
+
+    // ส่งต่อเฉพาะฟิลด์ที่ใช้ในหน้า Fund Lab
+    funds = parsed.map((fund) => ({
+      proj_id: fund.proj_id,
+      proj_name_th: fund.proj_name_th,
+      proj_name_en: fund.proj_name_en,
+      proj_abbr_name: fund.proj_abbr_name,
+      comp_name_th: fund.comp_name_th,
+      fund_status: fund.fund_status,
+      policy_desc: fund.policy_desc,
+      investment_policy_desc: fund.investment_policy_desc,
+      management_style: fund.management_style,
+      init_date: fund.init_date,
+      regis_date: fund.regis_date,
+      cancel_date: fund.cancel_date,
+      proj_retail_type: fund.proj_retail_type,
+      proj_term_flag: fund.proj_term_flag,
+      proj_term_day: fund.proj_term_day,
+      proj_term_month: fund.proj_term_month,
+      proj_term_year: fund.proj_term_year,
+    }));
+ 
+   } catch (error) {
+     console.error("Fund Lab page error:", error);
+
+     throw new Error(
+       "ไม่สามารถโหลดข้อมูลกองทุนได้ กรุณาตรวจสอบ Cloudflare R2 และ Fund Lab API"
+     );
+   }
+
+  // return <FundLabClient funds={funds} />;
+
+return (
+  <main className="min-h-screen bg-slate-50 text-slate-900">
+    {/* Header */}
+    <header className="border-b border-slate-200 bg-white">
+      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-emerald-800">
+            Thai Fund Explorer
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Your guide to Thai mutual funds
+          </p>
         </div>
-      </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-10">
-        {/* Hero */}
-        <section className="relative mb-7 overflow-hidden rounded-3xl bg-gradient-to-br from-[#064E3B] via-[#065F46] to-[#047857] px-5 py-7 text-white shadow-xl shadow-emerald-950/10 sm:mb-8 sm:px-9 sm:py-10 lg:px-12">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full border border-white/10 sm:h-72 sm:w-72"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -bottom-24 right-24 h-56 w-56 rounded-full bg-emerald-300/10 blur-3xl"
-          />
-
-          <div className="relative z-10 max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-emerald-50">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-              FUND RESEARCH WORKSPACE
-            </span>
-
-            <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight sm:mt-6 sm:text-4xl lg:text-5xl">
-              เปรียบเทียบกองทุน
-              <br />
-              <span className="text-emerald-300">
-                ด้วยข้อมูลที่เข้าใจง่าย
-              </span>
-            </h1>
-
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-emerald-50/90 sm:mt-5 sm:text-base sm:leading-8">
-              ค้นหาและเปรียบเทียบข้อมูลกองทุนรวมในพื้นที่ทำงานเดียว
-              พร้อมดูข้อมูลความเสี่ยงและประวัติ NAV ของกองทุนที่คุณสนใจ
-            </p>
-
-            <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-7">
-              <a
-                href="#fund-workspace"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-50"
-              >
-                เริ่มเปรียบเทียบ
-                <span aria-hidden="true">→</span>
-              </a>
-
-              <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm text-white/90">
-                <span className="h-2 w-2 rounded-full bg-emerald-300" />
-                ข้อมูลกองทุนในระบบ
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* Overview */}
-        <section
-          aria-label="ภาพรวมข้อมูลกองทุน"
-          className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  กองทุนในระบบ
-                </p>
-                <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900 tabular-nums">
-                  {funds.length.toLocaleString("th-TH")}
-                </p>
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  รายการข้อมูลกองทุนที่พร้อมให้ค้นหา
-                </p>
-              </div>
-
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v16H6.5A2.5 2.5 0 0 1 4 17.5zM4 7h16M8 11h7M8 14h5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  เครื่องมือวิเคราะห์
-                </p>
-                <h2 className="mt-3 text-xl font-bold tracking-tight text-slate-900">
-                  Fund Comparison
-                </h2>
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  เลือกกองทุนเพื่อเปรียบเทียบข้อมูล
-                </p>
-              </div>
-
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M4 19V5M4 19h16M8 15v-4M12 15V7M16 15v-6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:col-span-2 sm:p-6 lg:col-span-1">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  ช่วงการใช้งาน
-                </p>
-                <h2 className="mt-3 text-xl font-bold tracking-tight text-slate-900">
-                  Search &amp; Analyze
-                </h2>
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  ค้นหา กรอง และศึกษาข้อมูลกองทุน
-                </p>
-              </div>
-
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                >
-                  <circle cx="10.8" cy="10.8" r="6.8" />
-                  <path
-                    d="m16 16 4.5 4.5M8 10.8h5.6M10.8 8v5.6"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Fund comparison workspace */}
-        <section id="fund-workspace" className="scroll-mt-24">
-          <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
-                Discover &amp; Compare
-              </p>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                พื้นที่เปรียบเทียบกองทุน
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                ค้นหากองทุน เลือกรายการที่สนใจ และดูข้อมูลประกอบการเปรียบเทียบ
-              </p>
-            </div>
-
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              {funds.length.toLocaleString("th-TH")} กองทุน
-            </span>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-5 lg:p-6">
-            <FundLabClient funds={funds} />
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="mt-10 border-t border-slate-200 pt-5 pb-4 sm:mt-14 sm:pt-6">
-          <div className="flex flex-col gap-2 text-xs leading-6 text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              © {new Date().getFullYear()} Thai Fund Explorer
-            </p>
-            <p>
-              ข้อมูลมีไว้เพื่อการศึกษา ไม่ใช่คำแนะนำในการลงทุน
-            </p>
-          </div>
-        </footer>
+        <span className="w-fit rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
+          SEC Open API
+        </span>
       </div>
-    </main>
-  );
+    </header>
 
+    {/* Green Hero */}
+    <section className="bg-slate-50 px-6 py-8 sm:py-10">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-600 px-6 py-10 text-white shadow-lg sm:px-12 sm:py-14">
+
+        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-emerald-100">
+          THAI MUTUAL FUND PLATFORM
+        </p>
+
+        <h2 className="max-w-3xl text-4xl font-extrabold leading-tight sm:text-5xl">
+          Explore Funds.
+          <br />
+          Invest Smarter.
+        </h2>
+
+        <p className="mt-6 max-w-2xl text-base leading-8 text-emerald-50 sm:text-lg">
+          สำรวจข้อมูลกองทุนรวมไทย เปรียบเทียบรายละเอียด
+          และทำความเข้าใจนโยบายการลงทุนได้ง่ายขึ้น
+          ด้วยข้อมูลที่รวบรวมไว้ในที่เดียว
+        </p>
+
+        <a
+          href="#funds"
+          className="mt-8 inline-flex items-center rounded-xl bg-white px-6 py-3 font-semibold text-emerald-800 shadow-lg transition hover:bg-emerald-50"
+        >
+          เริ่มสำรวจกองทุน
+          <span className="ml-2" aria-hidden="true">
+            →
+          </span>
+        </a>
+      </div>
+    </section>
+
+    {/* Overview Cards */}
+    <section className="mx-auto grid max-w-7xl gap-5 px-6 py-10 sm:grid-cols-2 lg:grid-cols-3">
+      <article className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-2xl">
+          📊
+        </div>
+        <h3 className="text-lg font-bold text-slate-900">
+          Compare Funds
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          เปรียบเทียบข้อมูลและรายละเอียดกองทุนเพื่อช่วยประกอบการตัดสินใจ
+        </p>
+      </article>
+
+      <article className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-2xl">
+          🔎
+        </div>
+        <h3 className="text-lg font-bold text-slate-900">
+          Search & Analyze
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          ค้นหาและสำรวจนโยบายการลงทุน รวมถึงรายละเอียดสำคัญของกองทุน
+        </p>
+      </article>
+
+      <article className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-2xl">
+          🌱
+        </div>
+        <h3 className="text-lg font-bold text-slate-900">
+          Fund Explorer
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          รวมข้อมูลกองทุนไว้ในพื้นที่เดียว พร้อมสำรวจข้อมูลได้สะดวกขึ้น
+        </p>
+      </article>
+    </section>
+
+    {/* Existing Fund Lab */}
+    <section id="funds" className="mx-auto max-w-7xl px-6 pb-16">
+      <div className="mb-6">
+        <p className="text-sm font-semibold uppercase tracking-wider text-emerald-700">
+          FUND DISCOVERY
+        </p>
+        <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
+          พื้นที่เปรียบเทียบกองทุน
+        </h2>
+        <p className="mt-3 max-w-3xl leading-7 text-slate-600">
+          ค้นหาและเปรียบเทียบกองทุน โดยใช้เครื่องมือและข้อมูลที่มีอยู่เดิม
+        </p>
+      </div>
+
+      <FundLabClient funds={funds} />
+    </section>
+
+    {/* Footer */}
+    <footer className="border-t border-slate-200 bg-white">
+      <div className="mx-auto max-w-7xl px-6 py-6 text-sm text-slate-500">
+        Thai Fund Explorer · ข้อมูลเพื่อการศึกษาและประกอบการตัดสินใจ
+      </div>
+    </footer>
+  </main>
+);
 }

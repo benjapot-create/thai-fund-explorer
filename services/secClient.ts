@@ -1,4 +1,6 @@
 
+export const dynamic = "force-dynamic";
+
 const SEC_BASE_URL = "https://api.sec.or.th";
 
 const SEC_API_KEY = process.env.SEC_API_KEY!;
