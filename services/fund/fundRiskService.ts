@@ -44,18 +44,30 @@ function getLatestFundRisk(
   return Array.from(latestByFund.values());
 }
 
-export async function getFundRiskSpectrum(
-  selectedIds?: string[]
-): Promise<FundRiskResponse> {
-  // ใช้ URL ปัจจุบันของเซิร์ฟเวอร์ในกรณีไม่ได้กำหนด URL
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    "http://localhost:3000";
 
+export async function getFundRiskSpectrum(
+  selectedIds?: string[],
+  baseUrl?: string
+): Promise<FundRiskResponse> {
   async function fetchRiskPage(
     params: Record<string, string> = {}
   ): Promise<FundRiskResponse> {
-    const url = new URL("/api/fund-risk", baseUrl);
+    // Browser ใช้ URL ของเว็บปัจจุบัน ส่วน Server ต้องมี baseUrl
+    const apiPath = "/api/fund-risk";
+    const url =
+      typeof window !== "undefined"
+        ? new URL(apiPath, window.location.origin)
+        : baseUrl
+          ? new URL(apiPath, baseUrl)
+          : process.env.NEXT_PUBLIC_APP_URL?.trim()
+            ? new URL(apiPath, process.env.NEXT_PUBLIC_APP_URL.trim())
+            : null;
+
+    if (!url) {
+      throw new Error(
+        "Missing baseUrl for server-side fund risk request"
+      );
+    }
 
     for (const [key, value] of Object.entries(params)) {
       url.searchParams.set(key, value);
@@ -86,9 +98,7 @@ export async function getFundRiskSpectrum(
 
   if (selectedIds?.length) {
     const uniqueIds = [
-      ...new Set(
-        selectedIds.map((id) => id.trim()).filter(Boolean)
-      ),
+      ...new Set(selectedIds.map((id) => id.trim()).filter(Boolean)),
     ];
 
     const responses = await Promise.all(
@@ -106,10 +116,7 @@ export async function getFundRiskSpectrum(
 
     do {
       const params: Record<string, string> = {};
-
-      if (cursor) {
-        params.cursor = cursor;
-      }
+      if (cursor) params.cursor = cursor;
 
       const data = await fetchRiskPage(params);
       allItems.push(...data.items);
@@ -133,16 +140,6 @@ export async function getFundRiskSpectrum(
   }
 
   const latestItems = getLatestFundRisk(allItems);
-
-  console.info("Latest Fund Risk:", {
-    total: latestItems.length,
-    items: latestItems.map((item) => ({
-      proj_id: item.proj_id,
-      last_upd_date: item.last_upd_date,
-      risk_spectrum: item.risk_spectrum,
-      risk_spectrum_desc: item.risk_spectrum_desc,
-    })),
-  });
 
   return {
     message: "success",
