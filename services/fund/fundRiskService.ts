@@ -59,8 +59,8 @@ export async function getFundRiskSpectrum(
         ? new URL(apiPath, window.location.origin)
         : baseUrl
           ? new URL(apiPath, baseUrl)
-          : process.env.NEXT_PUBLIC_APP_URL?.trim()
-            ? new URL(apiPath, process.env.NEXT_PUBLIC_APP_URL.trim())
+          : process.env.APP_BASE_URL?.trim()
+            ? new URL(apiPath, process.env.APP_BASE_URL?.trim())
             : null;
 
     if (!url) {
