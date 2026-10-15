@@ -2,6 +2,7 @@ import FundNavHistoryChart from "./FundNavHistoryChart";
 import Link from "next/link";
 import { getFundById } from "@/services/fund/fundProfileService";
 import { getFundRiskSpectrum } from "@/services/fund/fundRiskService";
+import { getLatestFundFactsheet } from "../../../services/fund/fundFactsheetService";
 
 type FundFactsheetItem = {
   proj_id: string;
@@ -55,45 +56,8 @@ const currentYear = new Date().getFullYear();
 async function getFundFactsheet(
   projId: string
 ): Promise<FundFactsheetItem | null> {
-  const baseUrl = process.env.APP_BASE_URL?.trim();
+  return getLatestFundFactsheet(projId);
 
-  if (!baseUrl) {
-    throw new Error("Missing APP_BASE_URL environment variable");
-  }
-
-  const url = new URL("/api/fund-factsheet", baseUrl);
-  url.searchParams.set("proj_id", projId);
-
-  const response = await fetch(url.toString(), {
-    cache: "no-store",
-  });
-
-  const responseText = await response.text();
-
-  if (!response.ok) {
-    throw new Error(
-      `Fund Factsheet API error ${response.status}: ${responseText.slice(0, 300)}`
-    );
-  }
-
-  let data: {
-    message: string;
-    item: FundFactsheetItem | null;
-  };
-
-  try {
-    data = JSON.parse(responseText);
-  } catch {
-    throw new Error(
-      `Fund Factsheet API returned non-JSON: ${responseText.slice(0, 300)}`
-    );
-  }
-
-  if (data.message !== "success") {
-    throw new Error("API Fund Factsheet ส่งข้อมูลไม่สำเร็จ");
-  }
-
-  return data.item;
 }
 
 function formatThaiDate(value: string | null): string {
